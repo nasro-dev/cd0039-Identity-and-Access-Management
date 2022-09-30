@@ -17,7 +17,7 @@ CORS(app)
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 !! Running this funciton will add one
 '''
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 # ROUTES
 '''
@@ -112,3 +112,14 @@ def unprocessable(error):
 @TODO implement error handler for AuthError
     error handler should conform to general task above
 '''
+@app.route('/index')
+def hello():
+    return jsonify({
+        'success': True,
+        'message':'Hello World'
+    })
+
+
+if __name__ == '__main__':
+    app.debug = True
+    app.run()    
