@@ -29,6 +29,15 @@ db_drop_and_create_all()
         or appropriate status code indicating reason for failure
 '''
 
+@app.route('/drinks', method=['GET'])
+def get_drinks():
+    drinks = Drink.query.all()
+    if (len(drinks) == 0):
+        abort(404)
+    return jsonify({
+        'success': True,
+        'drinks':[drink.short() for drink in drinks]
+    })    
 
 '''
 @TODO implement endpoint
@@ -112,13 +121,19 @@ def unprocessable(error):
 @TODO implement error handler for AuthError
     error handler should conform to general task above
 '''
-@app.route('/index')
-def hello():
+@app.errorhandler(404)
+def unprocessable(error):
     return jsonify({
-        'success': True,
-        'message':'Hello World'
-    })
+        "success": False,
+        "error": 404,
+        "message": "Not found"
+    }), 404
 
+@app.errorhandler(AuthError)
+def handle_auth_error(er):
+    response = jsonify(er.error)
+    response.status_code = er.status_code
+    return response
 
 if __name__ == '__main__':
     app.debug = True
