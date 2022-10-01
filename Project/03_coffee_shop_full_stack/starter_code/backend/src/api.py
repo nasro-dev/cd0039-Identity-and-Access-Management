@@ -1,3 +1,4 @@
+from crypt import methods
 import os
 from flask import Flask, request, jsonify, abort
 from sqlalchemy import exc
@@ -47,6 +48,16 @@ def get_drinks():
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks-detail', methods=['GET'])
+@requires_auth('get:drinks-detail')
+def get_drinks_details(payload):
+    drinks = Drink.query.all()
+    if (len(drinks) == 0):
+        abort(404)
+    return jsonify({
+        'success': True,
+        'drinks': [drink.long() for drink in drinks]
+    })    
 
 
 '''
@@ -58,7 +69,21 @@ def get_drinks():
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
         or appropriate status code indicating reason for failure
 '''
-
+@app.route('/drinks', methods=['POST'])
+@requires_auth('post:drinks')
+def add_drinks(payload):
+    body = request.get_json()
+    title = body['title']
+    recipe = json.dumps(body['recipe'])
+    try:
+        drink = Drink(title=title, recipe=recipe)
+        return jsonify({
+        'success': True,
+        'drinks': [drink.long()]
+         }) 
+    except:
+        print(sys.exc_info())
+        abort(422)
 
 '''
 @TODO implement endpoint
@@ -71,7 +96,28 @@ def get_drinks():
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:id>', methods=['PATCH'])
+@requires_auth('patch:drinks')
+def patch_drinks(payload, id):
+    drink = Drink.query.filter(Drink.id == id).one_or_none()
 
+    if drink is None:
+        abort(404)
+
+    try:
+        body = request.get_json()
+        title = body['title']
+        recipe = json.dumps(body['recipe'])
+        drink.title = title
+        drink.recipe = recipe
+        drink.update()
+        return jsonify({
+            'success': True,
+            'drinks': [drink.long()]
+        })    
+    except:
+        print(sys.exc_info())
+        abort(422)
 
 '''
 @TODO implement endpoint
@@ -84,20 +130,26 @@ def get_drinks():
         or appropriate status code indicating reason for failure
 '''
 
-
+def delete_drinks(payload, id):
+    drink = Drink.query.filter(Drink.id == id).one_or_none()
+    if drink is None:
+        abort(404)
+    try:
+        drink.delete()
+        return jsonify({
+            'success': True,
+            'delete': drink.id
+        })    
+    except:
+        print(sys.exc_info())
+        abort(422)    
 # Error Handling
 '''
 Example error handling for unprocessable entity
 '''
 
 
-@app.errorhandler(422)
-def unprocessable(error):
-    return jsonify({
-        "success": False,
-        "error": 422,
-        "message": "unprocessable"
-    }), 422
+
 
 
 '''
@@ -126,9 +178,17 @@ def unprocessable(error):
     return jsonify({
         "success": False,
         "error": 404,
-        "message": "Not found"
+        "message": "Ressource Not found"
     }), 404
 
+@app.errorhandler(422)
+def unprocessable(error):
+    return jsonify({
+        "success": False,
+        "error": 422,
+        "message": "unprocessable"
+    }), 422
+    
 @app.errorhandler(AuthError)
 def handle_auth_error(er):
     response = jsonify(er.error)
